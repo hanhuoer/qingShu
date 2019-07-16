@@ -33,6 +33,16 @@ class Core:
     def get_id(self):
         return self.Id
 
+    def get_access_cookies(self):
+        cookies = ''
+        cookies += 'DeviceToken=' + self.DeviceToken + '; '
+        cookies += 'JSESSIONID=' + self.JSESSIONID + '; '
+        cookies += 'AnonymousToken=' + self.AnonymousToken + '; '
+        cookies += 'AccessToken=' + self.AccessToken + '; '
+        cookies += 'Id=' + self.Id + '; '
+
+        return cookies
+
     def jsessionid(self):
         get_jsessionid_url = 'https://degree.qingshuxuetang.com/hngd/Home'
 
@@ -76,25 +86,25 @@ class Core:
         self.DeviceToken = response.cookies.get('DeviceToken')
 
     def login(self, username, password):
-        login_url = 'https://degree.qingshuxuetang.com/hngd/Login'
+        login_url = 'https://www.qingshuxuetang.com/Login'
 
         idfa = str(uuid.uuid4())
 
-        cookies = "device_token=" + self.DeviceToken + "; JSESSIONID=" + self.JSESSIONID + "; AnonymousToken=" + self.AnonymousToken
+        cookies = "DeviceToken=" + self.DeviceToken + "; JSESSIONID=" + self.JSESSIONID + "; AnonymousToken=" + self.AnonymousToken
 
         querystring = {"_t": int(time.time() * 1000)}
 
         payload = "userNameTxt=" + username + "&passwordTxt=" + password + "&saveUserInfo=0&deviceInfoQS=%7B%22netType%22%3A1%2C%22appType%22%3A3%2C%22clientType%22%3A3%2C%22deviceName%22%3A%22PCWeb%22%2C%22osVersion%22%3A%22Win32%22%2C%22appVersion%22%3A%225.0%2B(Windows)%22%2C%22imei%22%3A%22%22%2C%22mac%22%3A%22%22%2C%22idfa%22%3A%" + idfa + "%22%7D&undefined="
         headers = {
-            'Host': "degree.qingshuxuetang.com",
+            'Host': "www.qingshuxuetang.com/Degree",
             'User-Agent': "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:67.0) Gecko/20100101 Firefox/67.0",
             'Accept': "*/*",
             'Accept-Language': "zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2",
             'Accept-Encoding': "gzip, deflate, br",
-            'Referer': "https://degree.qingshuxuetang.com/hngd/Home",
+            'Referer': "https://www.qingshuxuetang.com/Degree",
             'Content-Type': "application/x-www-form-urlencoded ; charset=UTF-8",
             'X-Requested-With': "XMLHttpRequest",
-            'Content-Length': "348",
+            'Content-Length': "291",
             'Connection': "keep-alive",
             'Cookie': cookies,
             'Pragma': "no-cache",
