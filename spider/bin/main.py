@@ -1,5 +1,5 @@
-import core.qingshu_core as qingshu
-import conf.user_conf as conf
+import spider.core.qingshu_core as qingshu
+import spider.conf.user_conf as conf
 
 
 def main():
