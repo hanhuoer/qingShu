@@ -1,38 +1,177 @@
 import re
-from pyquery import PyQuery as pq
 from xml.sax.saxutils import unescape
+
+import requests
+from pyquery import PyQuery as pq
 from selenium import webdriver
-import time
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import WebDriverWait
+
+import mock.conf.user_conf as conf
+
+browser = webdriver.Chrome()
+wait = WebDriverWait(browser, 100)
+
+user_class_info = {}
+
+user_info = {}
+
+user_cookies = {}
 
 
-home = 'https://degree.qingshuxuetang.com/hngd/Home'
+def login(username, password):
+    browser.get('https://degree.qingshuxuetang.com/hngd/Home')
 
-class_list = 'https://degree.qingshuxuetang.com/hngd/Student/CourseList'
+    username_input = WebDriverWait(browser, 100).until(
+        EC.presence_of_element_located((By.ID, 'uname'))
+    )
 
-class_dic = {}
+    username_input.clear()
+    username_input.send_keys(username)
 
-driver = webdriver.Firefox()
-driver.get(home)
+    password_input = WebDriverWait(browser, 100).until(
+        EC.presence_of_element_located((By.ID, 'pwd'))
+    )
 
-driver.find_element_by_id('uname').send_keys('15839427939')
-driver.find_element_by_id('pwd').send_keys('1206751678')
-driver.find_element_by_id('loginBtn').click()
+    password_input.clear()
+    password_input.send_keys(password)
 
-# get class html
-driver.get(class_list)
-class_html = driver.page_source
-document = pq(class_html)
-print("当前学期: " + document('#currentCourseDiv > div:nth-child(1) > div:nth-child(1)').text())
-class_items = document(
-    'html body div.wrapper div.container div#currentCourseDiv.books-all div.row div.col-md-3.col-sm-4.col-xs-12').items()
-for item in class_items:
-    class_name = re.findall('<span>(.*?)</span>', item.html())[0]
-    class_link = re.findall('href="(.*?)">', unescape(item.html()))[0]
-    class_dic[str(class_name)] = 'https://degree.qingshuxuetang.com/hngd/Student/' + str(class_link)
+    login_button = WebDriverWait(browser, 100).until(
+        EC.presence_of_element_located((By.ID, 'loginBtn'))
+    )
 
-for k in class_dic:
-    print(k, class_dic[k])
+    login_button.click()
 
-# https://degree.qingshuxuetang.com/hngd/Student/CourseStudy?courseId=1316&amp;teachPlanId=271&amp;periodId=11
 
-driver.quit()
+def init_cookies():
+    cookies = browser.get_cookies()
+
+    print(cookies)
+    for cookie in cookies:
+        user_cookies.setdefault(cookie['name'], cookie['value'])
+
+    return user_cookies
+
+
+def init_info():
+    global user_info
+
+    init_s = re.findall('Behavior\.init\((.*?)\);', browser.page_source, re.S)[0]
+
+    user_info = {
+        'college': re.findall('college.*?\'(.*?)\',', init_s, re.S)[0],
+        'schoolId': re.findall('schoolId:.(.*?),', init_s, re.S)[0],
+        'userId': re.findall('userId:.(.*?),', init_s, re.S)[0],
+        'userRole': re.findall('userRole:.(.*?),', init_s, re.S)[0],
+        'userSchools': re.findall('userSchools:.\'(.*?)\',', init_s, re.S)[0],
+        'userSchoolType': re.findall('userSchoolType:.\'(.*?)\',', init_s, re.S)[0],
+        'schoolType': re.findall('schoolType:.\'(.*?)\',', init_s, re.S)[0],
+        'promoteId': ''
+    }
+
+    return user_info
+
+
+def get_class_list():
+    browser.get('https://degree.qingshuxuetang.com/hngd/Student/CourseList')
+
+    class_html = browser.page_source
+
+    document = pq(class_html)
+    print(document('.container .page-header small').text())
+    class_items = document('.container.pt20 .row .panel-body').items()
+    for item in class_items:
+        class_name = item.find('.course_name').text()
+        class_link = unescape(item.find('.button.btn-lg.btn-green').attr('href'))
+        current_class_info = {
+            'name': class_name,
+            'url': 'https://degree.qingshuxuetang.com/hngd/Student/' + str(class_link),
+            'courseId': re.findall('courseId=(.*?)&', class_link)[0],
+            'teachPlanId': re.findall('teachPlanId=(.*?)&', class_link)[0],
+            'periodId': re.findall('periodId=(\d+)', class_link)[0]
+        }
+        user_class_info[str(re.findall('courseId=(.*?)&', class_link)[0])] = current_class_info
+
+    return user_class_info
+
+
+def upload_study_record_begin():
+    url = "https://degree.qingshuxuetang.com/hngd/Student/UploadStudyRecordBegin"
+
+    querystring = {"_t": "1563719597001"}
+
+    payload = "{\n    \"classId\": \"271\",\n    \"contentId\": \"kcjs_1\",\n    \"contentType\": 11,\n    \"courseId\": \"1298\",\n    \"periodId\": \"11\",\n    \"position\": 0,\n    \"schoolId\": \"9\"\n}"
+    headers = {
+        'Host': "degree.qingshuxuetang.com",
+        'Connection': "keep-alive",
+        'Content-Length': "117",
+        'Pragma': "no-cache",
+        'Cache-Control': "no-cache",
+        'Accept': "application/json",
+        'Origin': "https://degree.qingshuxuetang.com",
+        'X-Requested-With': "XMLHttpRequest",
+        'User-Agent': "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.142 Safari/537.36",
+        'Content-Type': "application/json",
+        'Referer': "https://degree.qingshuxuetang.com/hngd/Student/CourseShow?courseId=1298&teachPlanId=271&periodId=11&cw_nodeId=kcjs_1",
+        'Accept-Encoding': "gzip, deflate, br",
+        'Accept-Language': "zh-CN,zh;q=0.9,ja;q=0.8,ko;q=0.7,en;q=0.6",
+        'Cookie': "",
+        'cache-control': "no-cache",
+        'Postman-Token': "8b757287-d5d2-4669-8c3d-89020e3c5a45"
+    }
+
+    response = requests.request("POST", url, data=payload, headers=headers, params=querystring)
+
+    print(response.text)
+
+
+def upload_study_record_continue():
+    url = "https://degree.qingshuxuetang.com/hngd/Student/UploadStudyRecordContinue"
+
+    querystring = {"_t": "1563601371233"}
+
+    payload = "{\n    \"recordId\": *,\n    \"position\": 103\n}"
+    headers = {
+        'Host': "degree.qingshuxuetang.com",
+        'Connection': "keep-alive",
+        'Content-Length': "35",
+        'Pragma': "no-cache",
+        'Cache-Control': "no-cache",
+        'Accept': "application/json",
+        'Origin': "https://degree.qingshuxuetang.com",
+        'X-Requested-With': "XMLHttpRequest",
+        'User-Agent': "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.142 Safari/537.36",
+        'Content-Type': "application/json",
+        'Referer': "https://degree.qingshuxuetang.com/hngd/Student/CourseShow?teachPlanId=271&periodId=11&courseId=1298&cw_nodeId=kcjs_1",
+        'Accept-Encoding': "gzip, deflate, br",
+        'Accept-Language': "zh-CN,zh;q=0.9,ja;q=0.8,ko;q=0.7,en;q=0.6",
+        'Cookie': "",
+        'cache-control': "no-cache"
+    }
+
+    response = requests.request("POST", url, data=payload, headers=headers, params=querystring)
+
+    print(response.text)
+
+
+def main():
+    login(conf.username, conf.password)
+    init_cookies()
+    get_class_list()
+    init_info()
+
+    for cookie in user_cookies:
+        print(cookie)
+
+    for item in user_info:
+        print(item, user_info[item])
+
+    for item in user_class_info:
+        print(item, user_class_info[item])
+
+    browser.quit()
+
+
+if __name__ == '__main__':
+    main()
