@@ -9,9 +9,10 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
 import mock.conf.user_conf as conf
+import json
 
 browser = webdriver.Chrome()
-wait = WebDriverWait(browser, 100)
+wait = WebDriverWait(browser, 1000)
 
 user_class_info = {}
 
@@ -19,25 +20,41 @@ user_info = {}
 
 user_cookies = {}
 
+headers = {
+        'Host': "degree.qingshuxuetang.com",
+        'Connection': "keep-alive",
+        'Pragma': "no-cache",
+        'Cache-Control': "no-cache",
+        'Accept': "application/json",
+        'Origin': "https://degree.qingshuxuetang.com",
+        'X-Requested-With': "XMLHttpRequest",
+        'User-Agent': "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.142 Safari/537.36",
+        'Content-Type': "application/json",
+        'Referer': "https://degree.qingshuxuetang.com/hngd/Student/CourseShow?courseId=1298&teachPlanId=271&periodId=11&cw_nodeId=kcjs_1",
+        'Accept-Encoding': "gzip, deflate, br",
+        'Accept-Language': "zh-CN,zh;q=0.9,ja;q=0.8,ko;q=0.7,en;q=0.6",
+        'cache-control': "no-cache"
+    }
+
 
 def login(username, password):
     browser.get('https://degree.qingshuxuetang.com/hngd/Home')
 
-    username_input = WebDriverWait(browser, 100).until(
+    username_input = wait.until(
         EC.presence_of_element_located((By.ID, 'uname'))
     )
 
     username_input.clear()
     username_input.send_keys(username)
 
-    password_input = WebDriverWait(browser, 100).until(
+    password_input = wait.until(
         EC.presence_of_element_located((By.ID, 'pwd'))
     )
 
     password_input.clear()
     password_input.send_keys(password)
 
-    login_button = WebDriverWait(browser, 100).until(
+    login_button = wait.until(
         EC.presence_of_element_located((By.ID, 'loginBtn'))
     )
 
@@ -54,7 +71,16 @@ def init_cookies():
     return user_cookies
 
 
-def init_info():
+def get_cookies():
+    cookies = ''
+
+    for cookie in user_cookies:
+        cookies += cookie + '=' + user_cookies[cookie] + '; '
+
+    return cookies
+
+
+def init_user_info():
     global user_info
 
     init_s = re.findall('Behavior\.init\((.*?)\);', browser.page_source, re.S)[0]
@@ -69,6 +95,14 @@ def init_info():
         'schoolType': re.findall('schoolType:.\'(.*?)\',', init_s, re.S)[0],
         'promoteId': ''
     }
+
+    headers['Cookie'] = get_cookies()
+    response = requests.get(browser.current_url[:browser.current_url.rfind('/')] + '/' + 'Svc/UserInfo', headers=headers)
+
+    data = json.loads(response.text)['data']
+
+    for info in data:
+        user_info[info] = data[info]
 
     return user_info
 
@@ -116,9 +150,7 @@ def upload_study_record_begin():
         'Referer': "https://degree.qingshuxuetang.com/hngd/Student/CourseShow?courseId=1298&teachPlanId=271&periodId=11&cw_nodeId=kcjs_1",
         'Accept-Encoding': "gzip, deflate, br",
         'Accept-Language': "zh-CN,zh;q=0.9,ja;q=0.8,ko;q=0.7,en;q=0.6",
-        'Cookie': "",
-        'cache-control': "no-cache",
-        'Postman-Token': "8b757287-d5d2-4669-8c3d-89020e3c5a45"
+        'cache-control': "no-cache"
     }
 
     response = requests.request("POST", url, data=payload, headers=headers, params=querystring)
@@ -157,12 +189,12 @@ def upload_study_record_continue():
 
 def main():
     login(conf.username, conf.password)
-    init_cookies()
     get_class_list()
-    init_info()
+    init_cookies()
+    init_user_info()
 
     for cookie in user_cookies:
-        print(cookie)
+        print(cookie, user_cookies[cookie])
 
     for item in user_info:
         print(item, user_info[item])
