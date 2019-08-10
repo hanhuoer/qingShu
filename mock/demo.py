@@ -21,20 +21,20 @@ user_info = {}
 user_cookies = {}
 
 headers = {
-        'Host': "degree.qingshuxuetang.com",
-        'Connection': "keep-alive",
-        'Pragma': "no-cache",
-        'Cache-Control': "no-cache",
-        'Accept': "application/json",
-        'Origin': "https://degree.qingshuxuetang.com",
-        'X-Requested-With': "XMLHttpRequest",
-        'User-Agent': "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.142 Safari/537.36",
-        'Content-Type': "application/json",
-        'Referer': "https://degree.qingshuxuetang.com/hngd/Student/CourseShow?courseId=1298&teachPlanId=271&periodId=11&cw_nodeId=kcjs_1",
-        'Accept-Encoding': "gzip, deflate, br",
-        'Accept-Language': "zh-CN,zh;q=0.9,ja;q=0.8,ko;q=0.7,en;q=0.6",
-        'cache-control': "no-cache"
-    }
+    'Host': "degree.qingshuxuetang.com",
+    'Connection': "keep-alive",
+    'Pragma': "no-cache",
+    'Cache-Control': "no-cache",
+    'Accept': "application/json",
+    'Origin': "https://degree.qingshuxuetang.com",
+    'X-Requested-With': "XMLHttpRequest",
+    'User-Agent': "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.142 Safari/537.36",
+    'Content-Type': "application/json",
+    'Referer': "https://degree.qingshuxuetang.com/hngd/Student/CourseShow?courseId=1298&teachPlanId=271&periodId=11&cw_nodeId=kcjs_1",
+    'Accept-Encoding': "gzip, deflate, br",
+    'Accept-Language': "zh-CN,zh;q=0.9,ja;q=0.8,ko;q=0.7,en;q=0.6",
+    'cache-control': "no-cache"
+}
 
 
 def login(username, password):
@@ -97,7 +97,12 @@ def init_user_info():
     }
 
     headers['Cookie'] = get_cookies()
-    response = requests.get(browser.current_url[:browser.current_url.rfind('/')] + '/' + 'Svc/UserInfo', headers=headers)
+    response = requests.get(browser.current_url[:browser.current_url.rfind('/')] + '/' + 'Svc/UserInfo',
+                            headers=headers)
+
+    identify_info = re.findall('window.KF5SupportBoxAPI.identify\((.*?)\);', browser.page_source, re.S)[0]
+    user_info['name'] = re.findall('"name".:."(.*?)",', identify_info, re.S)[0]
+    user_info['number'] = re.findall('\'用户帐号.*value.*\'(.*?)\'},', identify_info, re.S)[0]
 
     data = json.loads(response.text)['data']
 
@@ -128,6 +133,16 @@ def get_class_list():
         user_class_info[str(re.findall('courseId=(.*?)&', class_link)[0])] = current_class_info
 
     return user_class_info
+
+
+def get_class_detail():
+    for item in user_class_info:
+        browser.get(user_class_info[item]['url'])
+        user_class_info[item]['class_detail'] = json.loads(re.findall('studyRecordList...(.*?);', browser.page_source, re.S)[0])
+        if len(user_class_info[item]['class_detail']) > 1:
+            user_class_info[item]['enable'] = True
+        else:
+            user_class_info[item]['enable'] = False
 
 
 def upload_study_record_begin():
@@ -192,6 +207,7 @@ def main():
     get_class_list()
     init_cookies()
     init_user_info()
+    get_class_detail()
 
     for cookie in user_cookies:
         print(cookie, user_cookies[cookie])
