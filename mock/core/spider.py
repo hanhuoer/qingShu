@@ -17,9 +17,9 @@ class MockSpider:
 
     def __init__(self):
         options = webdriver.ChromeOptions()
-        # options.add_argument('--no-sandbox')
-        # options.add_argument('--disable-dev-shm-usage')
-        # options.add_argument('--headless')
+        options.add_argument('--no-sandbox')
+        options.add_argument('--disable-dev-shm-usage')
+        options.add_argument('--headless')
         options.add_experimental_option("prefs", {"profile.managed_default_content_settings.images": 2})
         options.add_experimental_option('excludeSwitches', ['enable-automation'])
         self.browser = webdriver.Chrome(options=options)

@@ -69,6 +69,7 @@ def v2():
         while not login_result == '登录成功':
             username = input('账号: ')
             password = input('密码: ')
+            print('正在登录, 请稍后')
             login_result = qing_shu.login(username, password)
             print(login_result)
 
